@@ -18,18 +18,22 @@ def clean_and_format_advice(search_results):
 
 def get_financial_advice(query):
     try:
-        # Use web_search tool to get financial advice
-        from cursor_tools import web_search
-        results = web_search(
-            search_term=query,
-            explanation="Searching for financial advice and recommendations"
-        )
-        
-        if results and isinstance(results, list):
-            return clean_and_format_advice(results)
-        else:
-            # Fallback advice if web search fails
-            return get_fallback_advice(query)
+        # Try to use web_search tool if available
+        try:
+            from cursor_tools import web_search
+            results = web_search(
+                search_term=query,
+                explanation="Searching for financial advice and recommendations"
+            )
+            
+            if results and isinstance(results, list):
+                return clean_and_format_advice(results)
+        except ImportError:
+            # cursor_tools not available in deployment environment
+            pass
+            
+        # Fallback to static advice
+        return get_fallback_advice(query)
     except Exception as e:
         return get_fallback_advice(query)
 

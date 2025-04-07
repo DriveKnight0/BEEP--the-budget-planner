@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+from web_search import get_financial_advice
 
 # Load environment variables
 load_dotenv()
@@ -19,9 +20,28 @@ class SmartBudgetAIChatbot:
         print("Initializing SmartBudget AI with Gemini...")
         genai.configure(api_key=api_key)
         
-        # Initialize Gemini model
+        # Initialize Gemini model with safety settings
         try:
-            self.model = genai.GenerativeModel('gemini-1.5-pro')
+            generation_config = {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 40,
+                "max_output_tokens": 2048,
+            }
+            
+            safety_settings = [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            ]
+            
+            self.model = genai.GenerativeModel(
+                model_name='gemini-2.0-flash',
+                generation_config=generation_config,
+                safety_settings=safety_settings
+            )
+            
             self.chat = self.model.start_chat(history=[])
             print("Gemini model initialized successfully")
         except Exception as e:
@@ -42,7 +62,11 @@ class SmartBudgetAIChatbot:
             "Analyze spending patterns for travel 📈",
             "Calculate travel expense ratios 📊",
             "Suggest travel cost-saving strategies 💡",
-            "Help with travel budget management 📉"
+            "Help with travel budget management 📉",
+            "Provide up-to-date FD rates from major banks 🏦",
+            "Compare various banking products and services 💳",
+            "Offer information about loan interest rates 🏠",
+            "Explain different types of bank accounts and their benefits 💼"
         ]
         self.last_greeting_time = None
         
@@ -92,214 +116,133 @@ class SmartBudgetAIChatbot:
         }
 
     def get_ai_response(self, user_input):
-        if self.model and self.chat:
-            try:
-                # Add financial context to the prompt
-                context = self.format_conversation_history()
-                financial_context = self.format_financial_context()
-                
-                # Add specific focus on budget and trip planning with a more conversational tone
-                system_prompt = """You are a friendly and helpful financial buddy who specializes in budget planning and travel planning. 
-                Your personality traits:
-                - Super friendly and casual - use natural language like "hey", "cool", "awesome"
-                - Chat like a friend texting (short, engaging messages)
-                - Use emojis naturally (1-2 per message)
-                - Keep responses concise but informative
-                - Be encouraging and positive
-                - Use everyday language, avoid financial jargon
-                - Share practical tips in a fun way
-                
-                Your expertise areas:
-                1. Monthly budget planning and management
-                2. Travel planning and budgeting
-                3. Expense tracking for daily life and travel
-                4. Setting and achieving savings goals
-                
-                When giving advice:
-                - Break it down simply
-                - Use real-life examples
-                - Give one main tip at a time
-                - Keep numbers simple (round figures)
-                - Use ₹ for money values
-                - Be encouraging, not judgmental
-                
-                If the user asks about other topics, politely redirect them to budget or travel planning in a friendly way.
-                Remember to stay focused on helping with finances and travel planning while maintaining a casual, friendly tone."""
-                
-                prompt = f"{system_prompt}\n\nPrevious conversation:\n{context}\n\nFinancial context:\n{financial_context}\n\nUser: {user_input}\nAssistant:"
-                
-                response = self.chat.send_message(prompt)
-                return response.text
-            except Exception as e:
-                print(f"Error getting Gemini response: {str(e)}")
-                return self.generate_contextual_response(user_input)
-        else:
-            return self.generate_contextual_response(user_input)
+        if not self.model or not self.chat:
+            return self.generate_fallback_response(user_input)
+            
+        try:
+            # Process user input for financial information
+            self.extract_financial_info(user_input)
+            
+            # Prepare context for the AI
+            context = self.format_conversation_history()
+            financial_context = self.format_financial_context()
+            
+            # Create a focused prompt for the AI
+            prompt = f"""You are BEEP (Budgeting & Expense Estimation Planner), a fun but focused financial buddy! 🎯
+
+Core Mission: Help users achieve their financial goals through friendly guidance and practical advice.
+
+Style & Focus Guide:
+- Stay 100% focused on financial topics - politely redirect any off-topic questions
+- Be fun and friendly, but always bring it back to financial goals
+- Use emojis to make finance fun (2-3 per message)
+- Keep responses focused on actionable financial advice
+- Always ask about or reference specific financial goals
+- If user asks non-financial questions, gently redirect to:
+  * Budgeting
+  * Saving
+  * Investing
+  * Expense tracking
+  * Financial planning
+
+Previous chat:
+{context}
+
+Their financial info:
+{financial_context}
+
+Key Behaviors:
+1. Always ask about or reference their financial goals 🎯
+2. Give specific, actionable money advice 💡
+3. Use simple language but stay professional 📊
+4. Be encouraging about financial progress 🌟
+5. Redirect non-financial topics back to money goals
+
+Remember: You're their financial success coach! Keep them focused on their money goals.
+
+Their message: {user_input}"""
+
+            # Get response from Gemini
+            response = self.chat.send_message(prompt)
+            
+            # Make sure we have emojis in fallback responses too
+            if not response.text:
+                return self.generate_fallback_response(user_input)
+
+            # Update conversation history
+            self.conversation_history.append({"role": "user", "content": user_input})
+            self.conversation_history.append({"role": "assistant", "content": response.text})
+
+            return response.text
+            
+        except Exception as e:
+            print(f"Error getting Gemini response: {str(e)}")
+            return self.generate_fallback_response(user_input)
+
+    def generate_fallback_response(self, user_input):
+        """Generate a goal-oriented response when AI is unavailable"""
+        input_lower = user_input.lower()
+        
+        if any(word in input_lower for word in ['hi', 'hello', 'hey']):
+            return "Hey there! 👋 I'm BEEP, your financial goals coach! 🎯 Let's work on achieving your money goals together! What financial target would you like to hit first? 💪"
+            
+        if 'budget' in input_lower:
+            return "Perfect focus on budgeting! 🎯 A solid budget is key to reaching your financial goals. What specific money target are you aiming for? Let's build a plan to get you there! 📊"
+            
+        if any(word in input_lower for word in ['save', 'saving', 'savings']):
+            return "Love your focus on saving! 🎯 Setting clear savings goals is crucial for financial success. What's your target savings amount? Let's create a strategy to achieve it! 💰"
+            
+        if any(word in input_lower for word in ['invest', 'investment']):
+            return "Smart thinking about investing! 🎯 What's your investment goal - retirement, buying a house, or something else? Let's build an investment strategy to match your targets! 📈"
+            
+        if any(word in input_lower for word in ['expense', 'spending']):
+            return "Great focus on expenses! 🔍 Understanding your spending is key to reaching financial goals. What's your target budget? Let's track those expenses and align them with your objectives! 🎯"
+            
+        # Default response if no patterns match
+        return "Let's focus on your financial success! 🎯 What's your biggest money goal right now? Whether it's saving, investing, or budgeting, I'm here to help you create a solid plan to achieve it! 💪"
+
+    def extract_financial_info(self, user_input):
+        """Extract financial information from user input"""
+        # Extract amounts
+        amount_pattern = r'(?:₹|Rs\.?|INR)\s*(\d+(?:,\d+)*(?:\.\d{2})?)'
+        amounts = re.findall(amount_pattern, user_input)
+        
+        # Extract expense categories
+        expense_categories = ['food', 'rent', 'transport', 'utilities', 'entertainment', 'shopping']
+        found_categories = [cat for cat in expense_categories if cat in user_input.lower()]
+        
+        # Update user data if relevant information is found
+        if amounts and found_categories:
+            amount = float(amounts[0].replace(',', ''))
+            category = found_categories[0]
+            if category not in self.expenses:
+                self.expenses[category] = []
+            self.expenses[category].append(amount)
 
     def format_conversation_history(self):
+        """Format conversation history for context"""
         if not self.conversation_history:
-            return "This is the start of the conversation."
+            return "No previous conversation."
         
         formatted_history = []
-        for entry in self.conversation_history[-5:]:  # Keep last 5 exchanges for context
-            formatted_history.append(f"{entry['role']}: {entry['content']}")
+        for msg in self.conversation_history[-5:]:  # Only use last 5 messages for context
+            role = msg["role"].capitalize()
+            content = msg["content"]
+            formatted_history.append(f"{role}: {content}")
+            
         return "\n".join(formatted_history)
 
     def format_financial_context(self):
-        if not self.user_data and not self.expenses:
-            return "No financial data available yet."
-        
-        context = []
-        if self.user_data:
-            context.append("User Financial Profile:")
-            for key, value in self.user_data.items():
-                if key == 'income':
-                    context.append(f"- Monthly Income: ₹{value:,.2f}")
-                elif key == 'savings_goal':
-                    context.append(f"- Savings Goal: ₹{value:,.2f}")
-                else:
-                    context.append(f"- {key.title()}: {value}")
-        
-        if self.expenses:
-            context.append("\nExpense Categories:")
-            for category, amount in self.expenses.items():
-                context.append(f"- {category}: ₹{amount:,.2f}")
-        
+        """Format current financial context"""
+        if not self.expenses:
+            return "No financial information provided yet."
+            
+        context = ["Current financial information:"]
+        for category, amounts in self.expenses.items():
+            total = sum(amounts)
+            context.append(f"- {category.capitalize()}: ₹{total:,.2f}")
+            
         return "\n".join(context)
-
-    def generate_contextual_response(self, user_input):
-        # This is the fallback local implementation
-        # Check if we need to respond about specific financial topics
-        
-        # If user mentioned savings goal in this message
-        savings_patterns = [
-            r'(?i)(?:save|saving|savings|goal)\s+(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)',
-            r'(?i)(?:want to|wanna|going to|plan to)\s+save\s+(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)'
-        ]
-        
-        for pattern in savings_patterns:
-            savings_match = re.search(pattern, user_input)
-            if savings_match:
-                try:
-                    goal = float(savings_match.group(1).replace(",", ""))
-                    self.user_data["savings_goal"] = goal
-                    
-                    template = random.choice(self.response_templates["savings_goal_added"])
-                    return template.format(goal=f"{goal:,.0f}")
-                except (ValueError, IndexError):
-                    pass
-        
-        # If user added income recently
-        if "income" in self.user_data and len(self.conversation_history) < 3:
-            template = random.choice(self.response_templates["income_added"])
-            return template.format(income=f"{self.user_data['income']:,.0f}")
-        
-        # If user added expense
-        expense_pattern = r'(?i)(?:spend|spent|spending|pay|paying|paid|expense|expenses|cost|costs)\s+(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s+(?:on|for|in)\s+([a-zA-Z\s]+)'
-        expense_match = re.search(expense_pattern, user_input)
-        if expense_match:
-            amount = float(expense_match.group(1).replace(",", ""))
-            category = expense_match.group(2).strip().lower()
-            total_expenses = sum(self.expenses.values()) if self.expenses else 0
-            
-            template = random.choice(self.response_templates["expense_added"])
-            return template.format(amount=f"{amount:,.0f}", category=category, total_expenses=f"{total_expenses:,.0f}")
-        
-        # If user asks for budget analysis
-        analysis_keywords = ["analyze", "analysis", "how am i doing", "budget", "review", "overview", "summary", "status"]
-        if any(keyword in user_input.lower() for keyword in analysis_keywords) and "income" in self.user_data:
-            income = self.user_data["income"]
-            total_expenses = sum(self.expenses.values()) if self.expenses else 0
-            remaining = income - total_expenses
-            
-            # Generate advice
-            if self.expenses:
-                try:
-                    highest_category = max(self.expenses.items(), key=lambda x: x[1])
-                    highest_percent = (highest_category[1] / income) * 100
-                    
-                    advice_template = random.choice(self.advice_templates)
-                    advice = advice_template.format(
-                        category=highest_category[0],
-                        amount=f"{highest_category[1]:,.0f}",
-                        percent=f"{highest_percent:.1f}",
-                        recommended="15-20",
-                        status="high" if highest_percent > 30 else "reasonable",
-                        goal=f"{income * 0.2:,.0f}",
-                        savings_goal=f"{self.user_data.get('savings_goal', income * 0.2):,.0f}"
-                    )
-                except (ValueError, TypeError) as e:
-                    advice = "Consider tracking your expenses by category to get more specific advice."
-            else:
-                advice = "Consider tracking your expenses by category to get more specific advice."
-            
-            template = random.choice(self.response_templates["budget_analysis"])
-            return template.format(
-                income=f"{income:,.0f}",
-                total_expenses=f"{total_expenses:,.0f}",
-                remaining=f"{remaining:,.0f}",
-                advice=advice
-            )
-        
-        # Default to general advice
-        if self.user_name:
-            # Personalized response if we know the user's name
-            greeting = f"Hi {self.user_name}! "
-            return greeting + random.choice(self.response_templates["general"])
-        else:
-            return random.choice(self.response_templates["general"])
-            
-    def extract_financial_info(self, text):
-        # Extract income
-        income_pattern = r'(?i)(?:income|earn|salary|make|making)(?:\s+is|\s+of)?\s+(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)'
-        income_match = re.search(income_pattern, text)
-        if income_match:
-            try:
-                income_value = income_match.group(1).replace(",", "")
-                self.user_data["income"] = float(income_value)
-            except ValueError:
-                pass
-
-        # Extract expenses
-        expense_pattern = r'(?i)(?:spend|spent|spending|pay|paying|paid|expense|expenses|cost|costs)\s+(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s+(?:on|for|in)\s+([a-zA-Z\s]+)'
-        expense_matches = re.finditer(expense_pattern, text)
-        for match in expense_matches:
-            try:
-                amount = float(match.group(1).replace(",", ""))
-                category = match.group(2).strip().lower()
-                self.expenses[category] = amount
-            except ValueError:
-                pass
-
-        # Extract savings goal
-        savings_patterns = [
-            r'(?i)(?:save|saving|savings|goal)\s+(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)',
-            r'(?i)(?:want to|wanna|going to|plan to)\s+save\s+(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)'
-        ]
-        
-        for pattern in savings_patterns:
-            savings_match = re.search(pattern, text)
-            if savings_match:
-                try:
-                    savings_value = savings_match.group(1).replace(",", "")
-                    self.user_data["savings_goal"] = float(savings_value)
-                    break  # Stop after first match
-                except ValueError:
-                    pass
-                
-        # Extract user name if not already set
-        if not self.user_name:
-            name_patterns = [
-                r'(?i)(?:my name is|I am|I\'m) ([A-Za-z]+)',
-                r'(?i)(?:call me) ([A-Za-z]+)',
-                r'(?i)^(?:I\'m|I am) ([A-Za-z]+)'
-            ]
-            
-            for pattern in name_patterns:
-                name_match = re.search(pattern, text)
-                if name_match:
-                    self.user_name = name_match.group(1).capitalize()
-                    break
 
     def handle_greeting(self, user_input):
         greetings = ['hi', 'hello', 'hey', 'hola', 'greetings']
@@ -318,13 +261,29 @@ class SmartBudgetAIChatbot:
         return None
 
     def handle_capabilities(self, user_input):
-        capability_triggers = ['what can you do', 'your capabilities', 'help me', 'what do you do', 'how can you help']
-        if any(trigger in user_input.lower() for trigger in capability_triggers):
-            response = "I'm your personal finance assistant! Here's what I can do for you:\n\n"
-            for capability in self.capabilities:
-                response += f"• {capability}\n"
-            response += "\nReady to get started? Just tell me your name! 😊"
+        capability_pattern = r'(?i)(?:what can you do|capabilities|features|help me with|what do you do|how can you help)'
+        capability_match = re.search(capability_pattern, user_input)
+        
+        if capability_match:
+            response = "💡 I can help you with:\n\n"
+            
+            # Group capabilities by category for better organization
+            budget_capabilities = [cap for cap in self.capabilities[:4]]
+            travel_capabilities = [cap for cap in self.capabilities[4:8]]
+            banking_capabilities = [cap for cap in self.capabilities[8:]]
+            
+            response += "📒 Budget Management:\n"
+            response += "\n".join(budget_capabilities)
+            
+            response += "\n\n✈️ Travel Finance:\n"
+            response += "\n".join(travel_capabilities)
+            
+            response += "\n\n🏦 Banking Information:\n"
+            response += "\n".join(banking_capabilities)
+            
+            response += "\n\nWhat would you like help with today?"
             return response
+            
         return None
 
     def get_greeting(self):
@@ -406,3 +365,49 @@ class SmartBudgetAIChatbot:
 
         # Get AI response
         return self.get_ai_response(user_input)
+
+    def get_bank_information(self, query_type):
+        """
+        Get real-time bank information using web search.
+        
+        Args:
+            query_type (str): Type of bank information to retrieve (fd_rates, savings, loans, etc.)
+        
+        Returns:
+            str: Formatted information about bank products and rates
+        """
+        try:
+            # Construct appropriate search query based on query type
+            if 'fd' in query_type.lower() or 'fixed deposit' in query_type.lower():
+                search_query = "latest FD interest rates comparison major banks India"
+            elif 'saving' in query_type.lower():
+                search_query = "best savings account interest rates India comparison"
+            elif 'loan' in query_type.lower():
+                search_query = "current loan interest rates comparison banks India"
+            elif 'credit card' in query_type.lower():
+                search_query = "best credit card offers India comparison"
+            else:
+                search_query = f"latest {query_type} banking products India comparison"
+                
+            # Use web_search to get information
+            bank_info = get_financial_advice(search_query)
+            
+            # Construct a user-friendly response
+            response = f"📊 Latest {query_type.title()} Information:\n\n"
+            response += bank_info
+            
+            # Add a disclaimer
+            response += "\n\n⚠️ Note: Rates may vary. Please check with banks for the most current information."
+            
+            return response
+        except Exception as e:
+            # Fallback response if web search fails
+            return f"""Sorry, I couldn't get the latest information on {query_type}. Here's what I know:
+            
+• Fixed deposit rates typically range from 3-7% depending on the bank and duration
+• Senior citizens usually get 0.25-0.5% higher rates
+• Most banks offer higher rates for longer duration deposits
+• Special FD schemes may have higher rates but limited periods
+• Some banks offer additional benefits for existing customers
+
+Please check with specific banks for their current rates and offers."""

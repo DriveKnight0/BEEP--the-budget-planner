@@ -3,186 +3,501 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget AI Chatbot</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>BEEP - Budgeting & Expense Estimation Planner</title>
     <style>
         :root {
-            --primary-blue: #4A90E2;
-            --primary-red: #E74C3C;
-            --primary-green: #2ECC71;
-            --primary-yellow: #F1C40F;
+            --dark-green: #0a1f1c;
+            --gold: #c6a355;
+            --light-gold: #d4b872;
+            --darker-green: #071412;
         }
-        
-        .chat-container {
-            height: calc(100vh - 180px);
-            background-color: #f8f9fa;
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
         }
-        
-        .logo-section {
+
+        body {
+            background-color: var(--dark-green);
+            color: var(--gold);
+            min-height: 100vh;
             display: flex;
-            align-items: center;
-            gap: 1rem;
+            flex-direction: column;
         }
-        
-        .pie-chart-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: conic-gradient(
-                #4A90E2 0deg 180deg,
-                #E74C3C 180deg 270deg,
-                #2ECC71 270deg 360deg
-            );
+
+        .team-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: var(--light-gold);
+            background-color: rgba(10, 31, 28, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 3px solid var(--gold);
+            font-size: 0.8rem;
+            line-height: 1.5;
+            z-index: 10;
+        }
+
+        .team-info p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        .header {
+            text-align: center;
+            padding: 1rem;
+            background-color: var(--darker-green);
+            border-bottom: 2px solid var(--gold);
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
             position: relative;
         }
-        
-        .pie-chart-logo::after {
-            content: '$';
+
+        .logo-diamond {
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--gold);
+            transform: rotate(45deg);
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .logo-letter {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: #F1C40F;
+            font-size: 2.2rem;
+            color: var(--gold);
             font-weight: bold;
-            font-size: 1.2rem;
+            letter-spacing: -1px;
+        }
+
+        .logo-decoration {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            top: -20px;
+            left: -20px;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,10 L90,50 L50,90 L10,50 Z" fill="none" stroke="%23c6a355" stroke-width="2"/></svg>') no-repeat center;
+            opacity: 0.3;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin: 1rem 0 0.5rem 0;
+            letter-spacing: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .slogan {
+            font-size: 1rem;
+            letter-spacing: 0.2rem;
+            text-transform: uppercase;
+            color: var(--light-gold);
+            opacity: 0.9;
+        }
+
+        .bot-name {
+            font-size: 0.9rem;
+            color: var(--gold);
+            margin-top: 0.5rem;
+            letter-spacing: 0.1rem;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            padding: 1rem;
+            gap: 1rem;
+            overflow: hidden;
+        }
+
+        .features-container {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid var(--gold);
+            position: sticky;
+            top: 1rem;
+            max-height: calc(100vh - 170px);
+            overflow-y: auto;
+        }
+
+        .feature-item {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--gold);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(198, 163, 85, 0.1);
+        }
+
+        .feature-item:hover {
+            background: rgba(198, 163, 85, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .feature-item h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--light-gold);
+        }
+
+        .feature-item p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .chat-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: calc(100vh - 170px);
+            overflow: hidden;
+        }
+
+        #chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-box:after {
+            content: '';
+            display: table;
+            clear: both;
+        }
+
+        .message {
+            margin: 0.7rem 0;
+            padding: 0.8rem 1.2rem;
+            border-radius: 20px;
+            max-width: 80%;
+            width: fit-content;
+            display: inline-block;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            word-wrap: break-word;
+            white-space: pre-wrap;
         }
 
         .user-message {
-            background-color: #4A90E2;
-            color: white;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--light-gold) 100%);
+            margin-left: auto;
+            margin-right: 0;
+            border: none;
+            color: var(--dark-green);
+            border-top-right-radius: 4px;
+            align-self: flex-end;
         }
 
         .bot-message {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-left: 4px solid #2ECC71;
+            background: rgba(255, 255, 255, 0.05);
+            margin-right: auto;
+            margin-left: 0;
+            border: none;
+            border-top-left-radius: 4px;
+            color: var(--light-gold);
+            align-self: flex-start;
         }
 
-        .send-button {
-            background-color: #4A90E2;
+        .input-container {
+            display: flex;
+            gap: 1rem;
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            align-items: flex-end;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 0.8rem 1.2rem;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light-gold);
+            font-size: 0.95rem;
             transition: all 0.3s ease;
+            min-height: 45px;
+            max-height: 150px;
+            height: auto;
+            resize: none;
+            overflow-y: hidden;
+            word-wrap: break-word;
+            line-height: 1.4;
+            display: block;
         }
 
-        .send-button:hover {
-            background-color: #357ABD;
+        #user-input::-webkit-scrollbar {
+            width: 6px;
         }
 
-        .header-gradient {
-            background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+        #user-input::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #user-input::-webkit-scrollbar-thumb {
+            background: var(--gold);
+            border-radius: 3px;
+        }
+
+        #user-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 2px rgba(198, 163, 85, 0.3);
+        }
+
+        #send-button {
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--light-gold) 100%);
+            border: none;
+            border-radius: 25px;
+            color: var(--dark-green);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        #send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(198, 163, 85, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            .features-container {
+                width: 100%;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .slogan {
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div class="container mx-auto px-4 py-8">
-        <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-            <!-- Header -->
-            <div class="header-gradient p-6 flex items-center justify-between">
-                <div class="logo-section">
-                    <div class="pie-chart-logo"></div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-white">Smart Budget AI</h1>
-                        <p class="text-sm text-blue-100">Your Intelligent Financial Advisor</p>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <span class="px-3 py-1 bg-green-500 text-white rounded-full text-sm">Live</span>
-                </div>
-            </div>
+<body>
+    <div class="team-info">
+        <p>Made by:</p>
+        <p>Aryan Singh &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 12313583</p>
+        <p>Shubham Kumar Singh &nbsp; 12319302</p>
+        <p>Krishnam Singhal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 12319284</p>
+    </div>
 
-            <!-- Chat Container -->
-            <div class="chat-container overflow-y-auto p-6" id="chatContainer">
-                <div class="space-y-4" id="chatMessages">
-                    <!-- Messages will be added here -->
-                </div>
-            </div>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-diamond"></div>
+            <div class="logo-letter">B</div>
+            <div class="logo-decoration"></div>
+        </div>
+        <h1>BEEP</h1>
+        <div class="bot-name">Budgeting & Expense Estimation Planner</div>
+        <div class="slogan">Your Financial Future Starts Here</div>
+    </div>
 
-            <!-- Input Area -->
-            <div class="border-t border-gray-200 p-6 bg-white">
-                <form id="chatForm" class="flex space-x-4">
-                    <input type="text" 
-                           id="userInput" 
-                           class="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                           placeholder="Ask me about your finances...">
-                    <button type="submit" 
-                            class="send-button text-white px-8 py-3 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 ease-in-out">
-                        Send
-                    </button>
-                </form>
+    <div class="main-container">
+        <div class="features-container">
+            <div class="feature-item">
+                <h3>💰 Budget Overview</h3>
+                <p>Track your monthly income and expenses</p>
+            </div>
+            <div class="feature-item">
+                <h3>✈️ Trip Planning</h3>
+                <p>Plan and budget your upcoming trips</p>
+            </div>
+            <div class="feature-item">
+                <h3>📊 Financial Analysis</h3>
+                <p>Get insights into your spending patterns</p>
+            </div>
+            <div class="feature-item">
+                <h3>🎯 Savings Goals</h3>
+                <p>Set and track your savings targets</p>
+            </div>
+            <div class="feature-item">
+                <h3>💡 Smart Tips</h3>
+                <p>Receive personalized financial advice</p>
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div id="chat-box"></div>
+            <div class="input-container">
+                <textarea id="user-input" placeholder="Type your message here..." rows="1" autocomplete="off"></textarea>
+                <button id="send-button">Send</button>
             </div>
         </div>
     </div>
 
     <script>
-        document.getElementById('chatForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const userInput = document.getElementById('userInput');
-            const message = userInput.value.trim();
-            
-            if (!message) return;
-            
-            // Add user message to chat
-            addMessage('user', message);
-            userInput.value = '';
-            
-            try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ input: message })
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    addMessage('bot', `Error: ${data.error}`);
-                } else {
-                    addMessage('bot', data.response);
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatBox = document.getElementById('chat-box');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const featureItems = document.querySelectorAll('.feature-item');
+
+            // Financial quotes collection
+            const quotes = [
+                {
+                    text: "The best investment you can make is in yourself.",
+                    author: "Warren Buffett"
+                },
+                {
+                    text: "Don't tell me what you value, show me your budget, and I'll tell you what you value.",
+                    author: "Joe Biden"
+                },
+                {
+                    text: "A budget is telling your money where to go instead of wondering where it went.",
+                    author: "Dave Ramsey"
+                },
+                {
+                    text: "Financial peace isn't the acquisition of stuff. It's learning to live on less than you make.",
+                    author: "Will Rogers"
+                },
+                {
+                    text: "The habit of saving is itself an education; it fosters every virtue, teaches self-denial, cultivates the sense of order.",
+                    author: "T.T. Munger"
+                },
+                {
+                    text: "Time is money. Budget both wisely.",
+                    author: "BEEP"
+                },
+                {
+                    text: "Your future self is watching you right now through memories.",
+                    author: "BEEP"
+                },
+                {
+                    text: "Small savings today lead to big dreams tomorrow.",
+                    author: "BEEP"
                 }
-            } catch (error) {
-                addMessage('bot', 'Sorry, I encountered an error. Please try again.');
+            ];
+
+            // Get random quote
+            function getRandomQuote() {
+                return quotes[Math.floor(Math.random() * quotes.length)];
             }
-            
-            // Scroll to bottom
-            const chatContainer = document.getElementById('chatContainer');
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        });
-        
-        function addMessage(role, content) {
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
-            
-            const messageBubble = document.createElement('div');
-            messageBubble.className = `max-w-[70%] rounded-xl p-4 ${
-                role === 'user' 
-                    ? 'user-message shadow-sm' 
-                    : 'bot-message shadow-sm'
-            }`;
-            
-            // Handle multiline content
-            const formattedContent = content.split('\n').map(line => {
-                if (line.trim().startsWith('•')) {
-                    return `<span class="block pl-2 border-l-2 border-gray-300 my-1">${line}</span>`;
+
+            // Auto-resize textarea
+            function autoResize() {
+                this.style.height = '45px';
+                const newHeight = Math.min(this.scrollHeight, 150);
+                this.style.height = newHeight + 'px';
+                this.style.overflowY = this.scrollHeight > 150 ? 'auto' : 'hidden';
+            }
+
+            userInput.addEventListener('input', autoResize);
+            userInput.addEventListener('focus', autoResize);
+            userInput.addEventListener('change', autoResize);
+
+            function addMessage(message, isUser, isQuote = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+                
+                if (isQuote) {
+                    // Style for quote messages
+                    messageDiv.style.background = 'rgba(198, 163, 85, 0.15)';
+                    messageDiv.style.borderLeft = '4px solid var(--gold)';
+                    messageDiv.style.borderRadius = '4px';
+                    messageDiv.style.maxWidth = '90%';
+                    messageDiv.style.margin = '1.5rem auto';
+                    messageDiv.style.textAlign = 'center';
+                    messageDiv.style.padding = '1.5rem';
+                    messageDiv.style.fontSize = '1.1rem';
+                    messageDiv.style.fontStyle = 'italic';
                 }
-                return `<span class="block">${line}</span>`;
-            }).join('');
-            
-            messageBubble.innerHTML = formattedContent;
-            
-            messageDiv.appendChild(messageBubble);
-            chatMessages.appendChild(messageDiv);
-        }
-        
-        // Add initial greeting
-        window.addEventListener('load', () => {
-            addMessage('bot', 'Hey there! 👋 I\'m Fin, your money-savvy friend!\n\n' +
-                      'I love chatting about:\n' +
-                      '💰 Smart ways to save\n' +
-                      '🎯 Cool budget tricks\n' +
-                      '💡 Making your money work harder\n\n' +
-                      'What\'s on your mind? Let\'s chat about your money goals! 😊');
+
+                // Convert URLs to clickable links
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                const messageWithLinks = message.replace(urlRegex, '<a href="$1" target="_blank" style="color: inherit; text-decoration: underline;">$1</a>');
+                
+                // Handle line breaks and preserve formatting
+                const formattedMessage = messageWithLinks.replace(/\n/g, '<br>');
+                messageDiv.innerHTML = formattedMessage;
+                
+                chatBox.appendChild(messageDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (message) {
+                    addMessage(message, true);
+                    userInput.value = '';
+                    userInput.style.height = '45px';
+                    userInput.style.overflowY = 'hidden';
+
+                    fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ input: message })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        addMessage(data.response, false);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        addMessage('Sorry, there was an error processing your request.', false);
+                    });
+                }
+            }
+
+            // Add click handlers for feature items
+            featureItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const topic = item.querySelector('h3').textContent;
+                    userInput.value = `Tell me about ${topic}`;
+                    userInput.dispatchEvent(new Event('input'));
+                    sendMessage();
+                });
+            });
+
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Add welcome message with only the quote
+            const quote = getRandomQuote();
+            addMessage(`"${quote.text}"\n\n— ${quote.author}`, false, true);
         });
     </script>
 </body>
